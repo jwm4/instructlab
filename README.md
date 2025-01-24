@@ -618,7 +618,6 @@ To chat with the model with RAG enabled run:
 
 With the `--rag` option specified, the chat will search the ingested content and provide that content to the model for use in answering whatever questions you ask.   See [📣 Chat with the model (Optional)](#-chat-with-the-model-optional) for more details about `ilab model chat`.
 
-
 ## 🚀 Upgrade InstructLab to latest version
 
 1. To upgrade InstructLab to the latest version, use the following command:

@@ -26,12 +26,12 @@
   - [📥 Download the model](#-download-the-model)
   - [🍴 Serving the model](#-serving-the-model)
   - [📣 Chat with the model (Optional)](#-chat-with-the-model-optional)
+  - [📇 Configure retrieval-augmented generation (developer preview)](#-configure-retrieval-augmented-generation-developer-preview)
   - [🚀 Upgrade InstructLab to latest version](#-upgrade-instructlab-to-latest-version)
 - [💻 Creating new knowledge or skills and training the model](#-creating-new-knowledge-or-skills-and-training-the-model)
   - [🎁 Contribute knowledge or compositional skills](#-contribute-knowledge-or-compositional-skills)
   - [📜 List and validate your new data](#-list-and-validate-your-new-data)
   - [🚀 Generate a synthetic dataset](#-generate-a-synthetic-dataset)
-  - [📇 Configure retrieval-augmented generation (developer preview)](#-configure-retrieval-augmented-generation-developer-preview)
   - [👩‍🏫 Training the model](#-training-the-model)
     - [✋ Before you begin training](#-before-you-begin-training)
     - [InstructLab training pipelines](#instructlab-model-training-pipelines)
@@ -558,6 +558,67 @@ For detailed documentation on the InstructLab LLMs and their functions, see the 
    ilab model chat --model ~/.cache/instructlab/models/mixtral-8x7b-instruct-v0.1.Q4_K_M.gguf --temperature 0.5
    ```
 
+### 📇 Configure retrieval-augmented generation (developer preview)
+
+If you want to use the developer preview of retrieval-augmented generation (RAG), you need to enable developer preview features by setting `ILAB_FEATURE_SCOPE` to `DevPreviewNoUpgrade`. This tells InstructLab to enable developer preview features that might not be upgradable.  For many popular shells, this is done via the following:
+
+   ```shell
+   export ILAB_FEATURE_SCOPE=DevPreviewNoUpgrade
+   ```
+
+#### Converting documents
+
+Once you have enabled developer preview features, the first step is to convert your content into a structured form and then index that content for RAG to use with `ilab model chat`.  There are three options for conversion:
+
+*Converting documents from a directory:* If you have all the source documents (e.g., PDF, Markdown) that you want to convert in a single local directory, you can convert them:
+
+   ```shell
+      ilab rag convert --input-directory <path-to-document-directory> --output-directory <path-to-converted-document-directory> 
+   ```
+
+This capability has been tested with PDF, Markdown, and Microsoft Word format documents.  Any of the [formats supported by Docling](https://ds4sd.github.io/docling/reference/document_converter/#docling.document_converter.InputFormat) should work.
+
+*Converting documents from a taxonomy:* If you do not specify an input directory, the `convert` command will pull from your taxonomy instead.  For example, to use all of the documents in all of the knowledge nodes in your taxonomy you can run:
+
+   ```shell
+   ilab rag convert --taxonomy-base=empty --output-directory <path-to-converted-document-directory> 
+   ```
+
+*Converting documents within SDG:* The SDG commands will convert documents along with its primary goal (to generate synthetic data).  If you ran any configuration of `ilab data generate`, then the knowledge documents in the taxonomy that generated synthetic data will already be converted to a structured form.  In this case, there is no need to run the `ilab rag convert` command again.  For example, the following command mentioned in the [🚀 Generate a synthetic dataset](#-generate-a-synthetic-dataset) section converts all of the documents referenced in the entire contents of your taxonomy:
+
+   ```shell
+   ilab data convert --taxonomy-base=empty
+   ```
+
+In the last two examples, you can also omit the `--taxonomy-base=empty` flag. In this case, the conversion will only use documents referenced by the new or modified YAML files within your taxonomy rather than all of the documents from the entire taxonomy.
+
+#### Ingesting documents
+
+Once documents are converted, you can use the `ilab rag ingest` command to ingest the converted content into a vector database index file.
+
+*Ingesting documents from SDG:* By default, `ilab rag ingest` pulls the content to ingest from where SDG stores them, so if you converted documents within SDG (see above) you can ingest them using the following command:
+
+   ```shell
+   ilab rag ingest
+   ```
+
+*Ingesting documents from ilab rag convert*: Alternatively, if you ran `ilab rag convert` to convert your documents, without SDG, then the output directory you used for `ilab rag convert` should be the input directory you specify for `ilab rag ingest`, e.g.:
+
+   ```shell
+   ilab rag ingest --input-directory=/my/converted/documents/directory/goes/here/
+   ```
+
+#### Getting answers from RAG
+
+To chat with the model with RAG enabled run:
+
+   ```shell
+   ilab model chat --rag
+   ```
+
+With the `--rag` option specified, the chat will search the ingested content and provide that content to the model for use in answering whatever questions you ask.   See [📣 Chat with the model (Optional)](#-chat-with-the-model-optional) for more details about `ilab model chat`.
+
+
 ## 🚀 Upgrade InstructLab to latest version
 
 1. To upgrade InstructLab to the latest version, use the following command:
@@ -695,66 +756,6 @@ OpenAI-compatible API. For example, the one spawned by `ilab model serve` or any
    ```shell
    ilab data generate --taxonomy-base=empty
    ```
-
-### 📇 Configure retrieval-augmented generation (developer preview)
-
-If you want to use the developer preview of retrieval-augmented generation (RAG), you need to enable developer preview features by setting `ILAB_FEATURE_SCOPE` to `DevPreviewNoUpgrade`. This tells InstructLab to enable developer preview features that might not be upgradable.  For many popular shells, this is done via the following:
-
-   ```shell
-   export ILAB_FEATURE_SCOPE=DevPreviewNoUpgrade
-   ```
-
-#### Converting documents
-
-Once you have enabled developer preview features, the first step is to convert your content into a structured form and then index that content for RAG to use with `ilab model chat`.  There are three options for conversion:
-
-*Converting documents from a directory:* If you have all the source documents (e.g., PDF, Markdown) that you want to convert in a single local directory, you can convert them:
-
-   ```shell
-      ilab rag convert --input-directory <path-to-document-directory> --output-directory <path-to-converted-document-directory> 
-   ```
-
-This capability has been tested with PDF, Markdown, and Microsoft Word format documents.  Any of the [formats supported by Docling](https://ds4sd.github.io/docling/reference/document_converter/#docling.document_converter.InputFormat) should work.
-
-*Converting documents from a taxonomy:* If you do not specify an input directory, the `convert` command will pull from your taxonomy instead.  For example, to use all of the documents in all of the knowledge nodes in your taxonomy you can run:
-
-   ```shell
-   ilab rag convert --taxonomy-base=empty --output-directory <path-to-converted-document-directory> 
-   ```
-
-*Converting documents within SDG:* The SDG commands will convert documents along with its primary goal (to generate synthetic data).  If you ran any configuration of `ilab data generate`, then the knowledge documents in the taxonomy that generated synthetic data will already be converted to a structured form.  In this case, there is no need to run the `ilab rag convert` command again.  For example, the following command mentioned in the previous section converts all of the documents referenced in the entire contents of your taxonomy:
-
-   ```shell
-   ilab data convert --taxonomy-base=empty
-   ```
-
-In the last two examples, you can also omit the `--taxonomy-base=empty` flag. In this case, the conversion will only use documents referenced by the new or modified YAML files within your taxonomy rather than all of the documents from the entire taxonomy.
-
-#### Ingesting documents
-
-Once documents are converted, you can use the `ilab rag ingest` command to ingest the converted content into a vector database index file.
-
-*Ingesting documents from SDG:* By default, `ilab rag ingest` pulls the content to ingest from where SDG stores them, so if you converted documents within SDG (see above) you can ingest them using the following command:
-
-   ```shell
-   ilab rag ingest
-   ```
-
-*Ingesting documents from ilab rag convert*: Alternatively, if you ran `ilab rag convert` to convert your documents, without SDG, then the output directory you used for `ilab rag convert` should be the input directory you specify for `ilab rag ingest`, e.g.:
-
-   ```shell
-   ilab rag ingest --input-directory=/my/converted/documents/directory/goes/here/
-   ```
-
-#### Getting answers from RAG
-
-To chat with the model with RAG enabled run:
-
-   ```shell
-   ilab model chat --rag
-   ```
-
-With the `--rag` option specified, the chat will search the ingested content and provide that content to the model for use in answering whatever questions you ask.   See [📣 Chat with the model (Optional)](#-chat-with-the-model-optional) for more details about `ilab model chat`.
 
 ### 👩‍🏫 Training the model
 
